@@ -1,5 +1,5 @@
 import numpy as np
-from model import MLP
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -28,21 +28,49 @@ def load_labels_idx(filename):
 test_x = load_images_idx('t10k-images-idx3-ubyte')
 test_y = load_labels_idx('t10k-labels-idx1-ubyte')
 
-# Tüm test verisi için doğruluk
+# Tüm test verisi için tahminler
 predictions = []
+all_pred_probs = []
 batch_size = 100
+
 for i in range(0, len(test_x), batch_size):
     x_batch = test_x[i:i+batch_size]
-    y_pred = np.argmax(model.forward(x_batch), axis=1)
+    pred_probs = model.forward(x_batch)
+    y_pred = np.argmax(pred_probs, axis=1)
     predictions.extend(y_pred)
+    all_pred_probs.extend(pred_probs)
 
-total_accuracy = np.mean(np.array(predictions) == test_y) * 100
+# Doğruluk hesapla
+predictions_array = np.array(predictions)
+total_accuracy = np.mean(predictions_array == test_y) * 100
 
+# Performans metriklerini hesapla
+all_pred_probs_array = np.array(all_pred_probs)
 
+# One-hot encode gerçek etiketler
+y_true_onehot = np.zeros((len(test_y), 10))
+y_true_onehot[np.arange(len(test_y)), test_y] = 1
+
+# MSE (Mean Squared Error)
+mse = mean_squared_error(y_true_onehot, all_pred_probs_array)
+
+# MAE (Mean Absolute Error)
+mae = mean_absolute_error(y_true_onehot, all_pred_probs_array)
+
+# R^2 Score
+r2 = r2_score(y_true_onehot, all_pred_probs_array)
+
+# Sonuçları yazdır
+print(f"Ortalama doğruluk: {total_accuracy:.1f}%")
+print(f"MSE (Mean Squared Error): {mse:.4f}")
+print(f"MAE (Mean Absolute Error): {mae:.4f}")
+print(f"R² (R-squared) Score: {r2:.4f}")
+
+# Rastgele 100 örnek seç
 np.random.seed(42)
 indices = np.random.choice(len(test_x), 100, replace=False)
 
-
+# PDF oluştur
 with PdfPages('mnist_tahminler.pdf') as pdf:
     for page in range(4):
         fig, axes = plt.subplots(5, 5, figsize=(15, 15))
@@ -73,5 +101,4 @@ with PdfPages('mnist_tahminler.pdf') as pdf:
         pdf.savefig(fig, bbox_inches='tight')
         plt.close()
 
-print(f"mnist_tahminler.pdf oluşturuldu")
-print(f"Ortalama doğruluk: {total_accuracy:.1f}%")
+print(f"\nmnist_tahminler.pdf oluşturuldu")
